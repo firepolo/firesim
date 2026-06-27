@@ -12,6 +12,8 @@ class FireGasSimulation {
 
         this.smoke = new Float32Array(this.size);
         this.tmp = new Float32Array(this.size);
+        
+        this.time = 0.0;
 
         for (let i = 0; i < this.size; ++i) {
             this.smoke[i] = 0.0;
@@ -25,11 +27,15 @@ class FireGasSimulation {
     update(dt) {
         this.tmp.fill(0);
 
+        this.time += dt;
+        const frag = 0.5 / this.rows;
+
         for (let y = 1; y <= this.rows; ++y) {
             for (let x = 1; x <= this.cols; ++x) {
                 const i = y * this.width + x;
                 const density = this.smoke[i];
-                const u = (Math.random() - Math.random()) * (1.0 + density);
+                const u = (Math.random() - Math.random()) * (0.5 + density);
+                //const u = Math.cos((y + this.time) * 0.5) * 0.5;
                 const v = 1.0 - density;
 
                 const nx = Math.min(Math.max(1, x - u * dt), this.cols);
@@ -62,10 +68,11 @@ class FireGasSimulation {
             for (let x = 1; x <= this.cols; ++x) {
                 const i = y * this.width + x;
 
-                const density = this.smoke[i] 
+                /*const density = this.smoke[i] 
                 const k = 0.1 + 0.4 * density;
                 const smoke = density * (1 - k) + (this.smoke[i - this.width] + this.smoke[i - 1] + this.smoke[i + 1] + this.smoke[i + this.width]) * (k * 0.25);
-                const gray = Math.min(Math.max(0.0, smoke), 1.0) * 255;
+                const gray = Math.min(Math.max(0.0, smoke), 1.0) * 255;*/
+                const gray = Math.min(Math.max(0.0, this.smoke[i]), 1.0) * 255;
                 ctx.fillStyle = `rgb(${gray},${gray},${gray}`;
                 //ctx.fillStyle = `rgb(${128 + this.u[i] * 127},${128 + this.v[i] * 127},${smoke}`;
                 ctx.fillRect(x - 1, y - 1, 1, 1);
