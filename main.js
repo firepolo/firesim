@@ -13,8 +13,6 @@ class FireGasSimulation {
         this.smoke = new Float32Array(this.size);
         this.tmp = new Float32Array(this.size);
         
-        this.time = 0.0;
-
         for (let i = 0; i < this.size; ++i) {
             this.smoke[i] = 0.0;
         }
@@ -27,15 +25,12 @@ class FireGasSimulation {
     update(dt) {
         this.tmp.fill(0);
 
-        this.time += dt;
-        const frag = 0.5 / this.rows;
-
         for (let y = 1; y <= this.rows; ++y) {
             for (let x = 1; x <= this.cols; ++x) {
                 const i = y * this.width + x;
                 const density = this.smoke[i];
                 const u = (Math.random() - Math.random()) * (0.5 + density);
-                //const u = Math.cos((y + this.time) * 0.5) * 0.5;
+                //const u = Math.cos((y + performance.now() * 0.001) * 0.5) * 0.5;
                 const v = 1.0 - density;
 
                 const nx = Math.min(Math.max(1, x - u * dt), this.cols);
