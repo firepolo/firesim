@@ -21,54 +21,37 @@ class FireGasSimulation {
     add(x, y, value) {
         this.smoke[y * this.width + x] += value;
     }
-    
-    bilinear(s, x, y) {
-        const x0 = Math.floor(x);
-        const x1 = x0 + 1.0;
-        const y0 = Math.floor(y);
-        const y1 = y0 + 1.0;
-
-        const dx = x - x0;
-        const dy = y - y0;
-
-        const s00 = s[y0 * this.width + x0];
-        const s10 = s[y0 * this.width + x1];
-        const s01 = s[y1 * this.width + x0];
-        const s11 = s[y1 * this.width + x1];
-
-        const t = (s10 - s00) * dx + s00;
-        const b = (s11 - s01) * dx + s01;
-
-        return (b - t) * dy + t;
-    }
 
     update(dt) {
-        const maxDensity = 4.0;
+        this.tmp.fill(0);
 
         for (let y = 1; y <= this.rows; ++y) {
             for (let x = 1; x <= this.cols; ++x) {
                 const i = y * this.width + x;
                 const density = this.smoke[i];
-                if (density > maxDensity)
-                {
-                    const excess = density - maxDensity;
-                    this.smoke[i] = maxDensity;
-                    if (x > 1) this.smoke[i - 1] += excess * 0.5;
-                    if (x < this.cols) this.smoke[i + 1] += excess * 0.5;
-                }
                 const u = (Math.random() - Math.random()) * (1.0 + density);
-                const v = -0.5 / (1.0 - density);
-                const ox = Math.min(Math.max(0.5, x - u * dt), this.cols + 0.5);
-                const oy = Math.min(Math.max(0.5, y - v * dt), this.rows + 0.5);
-                this.tmp[i] = this.bilinear(this.smoke, ox, oy);
-            }
-        }
+                const v = 1.0 - density;
 
-        const totalSmokeAfter = this.tmp.reduce((a, b) => a + b, 0.0);
-        if (totalSmokeAfter > 0.0) {
-            const totalSmokeBefore = this.smoke.reduce((a, b) => a + b, 0.0);
-            const correction = totalSmokeBefore / totalSmokeAfter;
-            for (let i = 0; i < this.size; ++i) this.tmp[i] *= correction;
+                const nx = Math.min(Math.max(1, x - u * dt), this.cols);
+                const ny = Math.min(Math.max(1, y - v * dt), this.rows);
+
+                const x0 = Math.floor(nx);
+                const y0 = Math.floor(ny);
+                const x1 = x0 + 1.0;
+                const y1 = y0 + 1.0;
+                const dx = nx - x0;
+                const dy = ny - y0;
+
+                const w00 = (1 - dx) * (1 - dy);
+                const w10 = dx * (1 - dy);
+                const w01 = (1 - dx) * dy;
+                const w11 = dx * dy;
+
+                this.tmp[y0 * this.width + x0] += w00 * density;
+                this.tmp[y0 * this.width + x1] += w10 * density;
+                this.tmp[y1 * this.width + x0] += w01 * density;
+                this.tmp[y1 * this.width + x1] += w11 * density;
+            }
         }
 
         this.smoke.set(this.tmp);
@@ -79,9 +62,11 @@ class FireGasSimulation {
             for (let x = 1; x <= this.cols; ++x) {
                 const i = y * this.width + x;
 
-                const smoke = Math.min(Math.max(0.0, this.smoke[i]), 1.0) * 255;
-
-                ctx.fillStyle = `rgb(${smoke},${smoke},${smoke}`;
+                const density = this.smoke[i] 
+                const k = 0.1 + 0.4 * density;
+                const smoke = density * (1 - k) + (this.smoke[i - this.width] + this.smoke[i - 1] + this.smoke[i + 1] + this.smoke[i + this.width]) * (k * 0.25);
+                const gray = Math.min(Math.max(0.0, smoke), 1.0) * 255;
+                ctx.fillStyle = `rgb(${gray},${gray},${gray}`;
                 //ctx.fillStyle = `rgb(${128 + this.u[i] * 127},${128 + this.v[i] * 127},${smoke}`;
                 ctx.fillRect(x - 1, y - 1, 1, 1);
             }
