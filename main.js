@@ -19,7 +19,7 @@ class FireGasSimulation {
     }
 
     add(x, y, value) {
-        this.smoke[Math.floor(y * this.width + x)] += value;
+        this.smoke[y * this.width + x] += value;
     }
     
     bilinear(s, x, y) {
@@ -43,22 +43,35 @@ class FireGasSimulation {
     }
 
     update(dt) {
+        const maxDensity = 4.0;
+
         for (let y = 1; y <= this.rows; ++y) {
             for (let x = 1; x <= this.cols; ++x) {
                 const i = y * this.width + x;
-                const h = y / this.rows;
-                const turbulence = Math.random() - Math.random();
-                const u = turbulence;
-                const v = -0.5;
+                const density = this.smoke[i];
+                if (density > maxDensity)
+                {
+                    const excess = density - maxDensity;
+                    this.smoke[i] = maxDensity;
+                    if (x > 1) this.smoke[i - 1] += excess * 0.5;
+                    if (x < this.cols) this.smoke[i + 1] += excess * 0.5;
+                }
+                const u = (Math.random() - Math.random()) * (1.0 + density);
+                const v = -0.5 / (1.0 - density);
                 const ox = Math.min(Math.max(0.5, x - u * dt), this.cols + 0.5);
                 const oy = Math.min(Math.max(0.5, y - v * dt), this.rows + 0.5);
                 this.tmp[i] = this.bilinear(this.smoke, ox, oy);
             }
         }
 
-        this.smoke.set(this.tmp);
+        const totalSmokeAfter = this.tmp.reduce((a, b) => a + b, 0.0);
+        if (totalSmokeAfter > 0.0) {
+            const totalSmokeBefore = this.smoke.reduce((a, b) => a + b, 0.0);
+            const correction = totalSmokeBefore / totalSmokeAfter;
+            for (let i = 0; i < this.size; ++i) this.tmp[i] *= correction;
+        }
 
-        //console.log(totalSmoke);
+        this.smoke.set(this.tmp);
     }
 
     draw(ctx) {
@@ -111,7 +124,7 @@ function tick(now)
     const dt = (now - last) * 0.01;
     last = now;
 
-    if (mouse.down) simulation.add(mouse.x, mouse.y, 1.0);
+    if (mouse.down) simulation.add(mouse.x, mouse.y, 0.1);
     simulation.update(dt);
 
     context.fillStyle = "#fff";
