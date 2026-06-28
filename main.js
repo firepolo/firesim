@@ -29,8 +29,10 @@ class FireGasSimulation {
             for (let x = 1; x <= this.cols; ++x) {
                 const i = y * this.width + x;
                 const density = this.smoke[i];
-                const u = (Math.random() - Math.random()) * (0.5 + density);
-                //const u = Math.cos((y + performance.now() * 0.001) * 0.5) * 0.5;
+                const h = y / this.rows;
+                const hi = 1.0 - h;
+                const turbulence = Math.random() - Math.random();
+                const u = Math.sin((y + performance.now() * 0.001) * 0.5) * hi * 0.25 + turbulence * 0.5;
                 const v = 1.0 - density;
 
                 const nx = Math.min(Math.max(1, x - u * dt), this.cols);
@@ -111,7 +113,7 @@ function tick(now)
     const dt = (now - last) * 0.01;
     last = now;
 
-    if (mouse.down) simulation.add(mouse.x, mouse.y, 0.1);
+    if (mouse.down) simulation.add(mouse.x, mouse.y, 0.05);
     simulation.update(dt);
 
     context.fillStyle = "#fff";
