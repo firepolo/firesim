@@ -10,16 +10,23 @@ class FireGasSimulation {
         this.right = this.width - 1;
         this.bottom = this.height - 1;
 
+        this.u = new Float32Array(this.size);
+        this.v = new Float32Array(this.size);
         this.smoke = new Float32Array(this.size);
         this.tmp = new Float32Array(this.size);
         
-        for (let i = 0; i < this.size; ++i) {
-            this.smoke[i] = 0.0;
-        }
+        this.u.fill(0.0);
+        this.v.fill(0.0);
+        this.smoke.fill(0.0);
     }
 
-    add(x, y, value) {
+    addSmoke(x, y, value) {
         this.smoke[y * this.width + x] += value;
+    }
+
+    addVelocity(x, y, u, v) {
+        this.u[y * this.width + x] += u;
+        this.v[y * this.width + x] += v;
     }
 
     update(dt) {
@@ -32,10 +39,10 @@ class FireGasSimulation {
                 const hi = 1.0 - y / this.rows;
                 const turbulence = Math.random() - Math.random();
                 const d = density / 2.5;
-                const v = d * (1.0 - d) * 3.0;
+                const v = (d * (1.0 - d) * 3.0) + this.v[i];
                 
                 const spread = hi * (1.0 - Math.max(0.0, v));
-                const u = Math.sin((y + performance.now() * 0.001) * 0.5) * spread * 0.2 + turbulence * (0.2 + spread);
+                const u = (Math.sin((y + performance.now() * 0.001) * 0.5) * spread * 0.2 + turbulence * (0.2 + spread)) + this.u[i];
 
                 const nx = Math.min(Math.max(1, x - u * dt), this.cols);
                 const ny = Math.min(Math.max(1, y - v * dt), this.rows);
@@ -67,13 +74,8 @@ class FireGasSimulation {
             for (let x = 1; x <= this.cols; ++x) {
                 const i = y * this.width + x;
 
-                /*const density = this.smoke[i] 
-                const k = 0.1 + 0.4 * density;
-                const smoke = density * (1 - k) + (this.smoke[i - this.width] + this.smoke[i - 1] + this.smoke[i + 1] + this.smoke[i + this.width]) * (k * 0.25);
-                const gray = Math.min(Math.max(0.0, smoke), 1.0) * 255;*/
-                const gray = Math.min(Math.max(0.0, this.smoke[i]), 1.0) * 255;
-                ctx.fillStyle = `rgb(${gray},${gray},${gray}`;
-                //ctx.fillStyle = `rgb(${128 + this.u[i] * 127},${128 + this.v[i] * 127},${smoke}`;
+                const smoke = Math.min(Math.max(0.0, this.smoke[i]), 1.0) * 255;
+                ctx.fillStyle = `rgb(${128 + this.u[i] * 127},${128 + this.v[i] * 127},${smoke}`;
                 ctx.fillRect(x - 1, y - 1, 1, 1);
             }
         }
@@ -88,7 +90,7 @@ canvas.style = `border: 1px solid #000;width:${canvas.width * CellSize}px;height
 document.body.appendChild(canvas);
 
 const context = canvas.getContext("2d");
-const mouse = { down: false, x: 0, y: 0 };
+const mouse = { buttons: [false, false, false, false, false], x: 0, y: 0 };
 
 const simulation = new FireGasSimulation(canvas.width, canvas.height);
 
@@ -97,12 +99,12 @@ const simulation = new FireGasSimulation(canvas.width, canvas.height);
 }*/
 
 canvas.onmousedown = canvas.onmouseup = (e) => {
-    mouse.down = e.type == 'mousedown';
+    mouse.buttons[e.button] = e.type == 'mousedown';
     canvas.onmousemove(e)
 }
 
 canvas.onmousemove = (e) => {
-    if (!mouse.down) return;
+    if (!mouse.buttons.includes(true)) return;
     const b = e.target.getBoundingClientRect();
     mouse.x = Math.floor(canvas.width / b.width * (e.clientX - b.x) + 0.5);
     mouse.y = Math.floor(canvas.height / b.height * (e.clientY - b.y) + 0.5);
@@ -115,7 +117,8 @@ function tick(now)
     const dt = (now - last) * 0.01;
     last = now;
 
-    if (mouse.down) simulation.add(mouse.x, mouse.y, 0.1);
+    if (mouse.buttons[0]) simulation.addSmoke(mouse.x, mouse.y, 0.1);
+    if (mouse.buttons[1]) simulation.addVelocity(mouse.x, mouse.y, -1.0, 0.0);
     simulation.update(dt);
 
     context.fillStyle = "#fff";
